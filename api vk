@@ -1,0 +1,68 @@
+import requests
+import time
+import pandas as pd
+
+
+access_token = '___'
+group_id = 'montimechanic'
+main_api_url = 'https://api.vk.com/method/'
+version = '5.126'
+url = main_api_url + 'groups.getMembers'
+
+users_data=[]
+
+offset = 0
+count = 1000
+
+while True:
+    print('loading data from {0}:{1}'.format(offset+1, offset+count))
+    params = {
+    'group_id': group_id,
+    'access_token': access_token,
+    'offset':offset,
+    'count':count,
+    'v': version,
+    'fields': 'country'
+    }
+    r = requests.get(url, params=params)
+    if not r.ok:
+        print('failed to get data with skip {0}: {1}'.format(offset, r.text))
+        time.sleep(5)
+        continue
+    
+    data = r.json()['response'] ['items']
+    for members in data:
+        users_data.append(members)    
+    offset+=count
+    time.sleep(3)
+    if offset > len(users_data):
+        break
+        
+countries = {}
+
+for member in users_data:
+    if 'country' in member and member ['country'] is not None:
+        country_name = member['country']['title']
+        
+        if country_name in countries:
+            countries[country_name] += 1
+        else:
+            countries[country_name] = 1    
+            
+countries_list = []
+counts_list = []
+
+for z, c in countries.items():
+    countries_list.append(z)
+    counts_list.append(c)
+    
+for_dataframe = {
+    'Страна': countries_list,
+    'Количество': counts_list,
+}
+
+df = pd.DataFrame(for_dataframe)
+sorted_df = df.sort_values(by=['Количество'], ascending=False)
+sorted_df
+
+barchart = sorted_df.plot.bar(x='Страна', y='Количество',figsize= (25,12), ls='-',  color= '#01bcc6', rot=90, title='Из каких стран ваши подсписочники', fontsize = 18, grid=True)
